@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор сложности задачи — ГИП</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; color: #1a1a1a; background: #f5f5f5; padding: 24px 16px; line-height: 1.5; }
+  .calc-wrap { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; padding: 28px; }
+  .calc-title { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+  .calc-meta { font-size: 12px; color: #888; margin-bottom: 24px; }
+  .section { margin-bottom: 20px; }
+  .section-label { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .type-opt { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border: 1.5px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; user-select: none; }
+  .type-opt:hover { background: #f8f8f8; border-color: #bbb; }
+  .type-opt.selected { border-color: #3b82f6; background: #eff6ff; }
+  .type-opt input { display: none; }
+  .type-title { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+  .type-desc { font-size: 12px; color: #888; }
+  .type-opt.selected .type-title { color: #1d4ed8; }
+  .opts { display: flex; flex-direction: column; gap: 6px; }
+  .opt { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; user-select: none; }
+  .opt:hover { background: #f8f8f8; border-color: #bbb; }
+  .opt.selected { border-color: #3b82f6; background: #eff6ff; }
+  .opt input { display: none; }
+  .opt-label { font-size: 13px; color: #1a1a1a; flex: 1; }
+  .opt-pts { font-size: 12px; color: #888; white-space: nowrap; font-weight: 500; }
+  .opt.selected .opt-pts { color: #1d4ed8; }
+  .divider { border: none; border-top: 1px solid #efefef; margin: 20px 0; }
+  .hidden { display: none !important; }
+  .scale-row { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .scale-item { display: flex; flex-direction: column; align-items: center; gap: 2px; background: #f5f5f5; border-radius: 8px; padding: 8px 12px; flex: 1; min-width: 64px; border: 1.5px solid transparent; transition: border-color 0.15s; }
+  .scale-size { font-size: 15px; font-weight: 700; }
+  .scale-range { font-size: 10px; color: #888; text-align: center; }
+  .scale-pts { font-size: 10px; color: #aaa; }
+  .sc-S .scale-size { color: #059669; }
+  .sc-M .scale-size { color: #2563eb; }
+  .sc-L .scale-size { color: #16a34a; }
+  .sc-XL .scale-size { color: #d97706; }
+  .sc-XXL .scale-size { color: #db2777; }
+  .scale-item.active.sc-S { border-color: #059669; background: #ecfdf5; }
+  .scale-item.active.sc-M { border-color: #2563eb; background: #eff6ff; }
+  .scale-item.active.sc-L { border-color: #16a34a; background: #f0fdf4; }
+  .scale-item.active.sc-XL { border-color: #d97706; background: #fffbeb; }
+  .scale-item.active.sc-XXL { border-color: #db2777; background: #fdf2f8; }
+  .result-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+  .metric { background: #f8f8f8; border-radius: 8px; padding: 14px; border: 1px solid #efefef; }
+  .metric-label { font-size: 11px; color: #888; margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+  .metric-value { font-size: 24px; font-weight: 700; color: #1a1a1a; }
+  .metric-sub { font-size: 11px; color: #aaa; margin-top: 4px; }
+  .sz-S { color: #059669; }
+  .sz-M { color: #2563eb; }
+  .sz-L { color: #16a34a; }
+  .sz-XL { color: #d97706; }
+  .sz-XXL { color: #db2777; }
+  .breakdown { font-size: 12px; color: #aaa; line-height: 1.8; margin-bottom: 4px; }
+  .time-note { font-size: 12px; color: #888; }
+  .reset-btn { margin-top: 20px; font-size: 12px; color: #888; background: none; border: 1px solid #ddd; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
+  .reset-btn:hover { background: #f5f5f5; }
+  @media (max-width: 480px) { .result-row { grid-template-columns: repeat(2, 1fr); } .type-grid { grid-template-columns: 1fr; } .calc-wrap { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="calc-wrap">
+  <div class="calc-title">Калькулятор сложности задачи</div>
+  <div class="calc-meta">Группа информационной поддержки &nbsp;·&nbsp; 1 SP = 40 мин &nbsp;·&nbsp; норма: 10 SP/день, 50 SP/неделю</div>
+
+  <div class="section">
+    <div class="section-label">Тип задачи</div>
+    <div class="type-grid">
+      <label class="type-opt selected"><input type="radio" name="type" value="content" checked><span class="type-title">Контент БЗ</span><span class="type-desc">Статьи, алгоритмы, шаблоны</span></label>
+      <label class="type-opt"><input type="radio" name="type" value="news"><span class="type-title">Только новость</span><span class="type-desc">Без изменений в БЗ</span></label>
+      <label class="type-opt"><input type="radio" name="type" value="rewrite"><span class="type-title">Рерайт статьи</span><span class="type-desc">Полное переписывание + актуализация</span></label>
+      <label class="type-opt"><input type="radio" name="type" value="ops"><span class="type-title">Операционная</span><span class="type-desc">Аналитика, распределение задач</span></label>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div id="block-content">
+    <div class="section">
+      <div class="section-label">1. Объём работы</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="g1" value="0.5" data-min="20" checked><span class="opt-label">Правка в 1 месте: уточнить формулировку, исправить ошибку, обновить 1 факт</span><span class="opt-pts">0,5 SP</span></label>
+        <label class="opt"><input type="radio" name="g1" value="1" data-min="40"><span class="opt-label">Правки в нескольких блоках одной статьи / нескольких шагов алгоритма</span><span class="opt-pts">1,0 SP</span></label>
+        <label class="opt"><input type="radio" name="g1" value="1.5" data-min="60"><span class="opt-label">Частичная переработка: новые блоки, переструктурирование</span><span class="opt-pts">1,5 SP</span></label>
+        <label class="opt"><input type="radio" name="g1" value="3" data-min="120"><span class="opt-label">Полная переработка статьи / алгоритма или создание с нуля</span><span class="opt-pts">3,0 SP</span></label>
+        <label class="opt"><input type="radio" name="g1" value="4" data-min="160"><span class="opt-label">Создание нового раздела БЗ: несколько связанных статей и шаблонов</span><span class="opt-pts">4,0 SP</span></label>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">2. Охват изменений</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="g3" value="0" data-min="0" checked><span class="opt-label">Одна статья / шаблон, не затрагивает смежный контент</span><span class="opt-pts">0 SP</span></label>
+        <label class="opt"><input type="radio" name="g3" value="1" data-min="40"><span class="opt-label">Нужно обновить 2–4 связанных материала</span><span class="opt-pts">+1,0 SP</span></label>
+        <label class="opt"><input type="radio" name="g3" value="2" data-min="80"><span class="opt-label">Правки в 5+ материалах или нескольких разделах БЗ</span><span class="opt-pts">+2,0 SP</span></label>
+        <label class="opt"><input type="radio" name="g3" value="3" data-min="120"><span class="opt-label">Масштабное обновление: весь тематический блок</span><span class="opt-pts">+3,0 SP</span></label>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">3. Новостная рассылка</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="g4" value="0" data-min="0" checked><span class="opt-label">Новость не нужна</span><span class="opt-pts">0 SP</span></label>
+        <label class="opt"><input type="radio" name="g4" value="0.5" data-min="15"><span class="opt-label">Типовая новость: 1 инфоповод, стандартная структура</span><span class="opt-pts">+0,5 SP</span></label>
+        <label class="opt"><input type="radio" name="g4" value="1" data-min="40"><span class="opt-label">Развёрнутая новость или несколько инфоповодов</span><span class="opt-pts">+1,0 SP</span></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="block-news" class="hidden">
+    <div class="section">
+      <div class="section-label">Объём новости</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="n1" value="0.5" data-min="15" checked><span class="opt-label">Типовая новость: 1 инфоповод, стандартная структура</span><span class="opt-pts">0,5 SP</span></label>
+        <label class="opt"><input type="radio" name="n1" value="1" data-min="40"><span class="opt-label">Развёрнутая новость, несколько инфоповодов или апдейты по нескольким изменениям</span><span class="opt-pts">1,0 SP</span></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="block-rewrite" class="hidden">
+    <div class="section">
+      <div class="section-label">1. Объём рерайта</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="r1" value="3" data-min="120" checked><span class="opt-label">Рерайт короткой статьи / алгоритма (до 1 страницы)</span><span class="opt-pts">3,0 SP</span></label>
+        <label class="opt"><input type="radio" name="r1" value="5" data-min="200"><span class="opt-label">Рерайт средней статьи: несколько разделов, сложная структура</span><span class="opt-pts">5,0 SP</span></label>
+        <label class="opt"><input type="radio" name="r1" value="7" data-min="280"><span class="opt-label">Рерайт большой статьи + актуализация всей фактуры</span><span class="opt-pts">7,0 SP</span></label>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">2. Новостная рассылка по итогу</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="r2" value="0" data-min="0" checked><span class="opt-label">Новость не нужна</span><span class="opt-pts">0 SP</span></label>
+        <label class="opt"><input type="radio" name="r2" value="0.5" data-min="15"><span class="opt-label">Типовая новость</span><span class="opt-pts">+0,5 SP</span></label>
+        <label class="opt"><input type="radio" name="r2" value="1" data-min="40"><span class="opt-label">Развёрнутая новость</span><span class="opt-pts">+1,0 SP</span></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="block-ops" class="hidden">
+    <div class="section">
+      <div class="section-label">Сложность операционной задачи</div>
+      <div class="opts">
+        <label class="opt selected"><input type="radio" name="o1" value="0.5" data-min="20" checked><span class="opt-label">Простая рутина: собрать данные по шаблону, заполнить таблицу</span><span class="opt-pts">0,5 SP</span></label>
+        <label class="opt"><input type="radio" name="o1" value="1" data-min="40"><span class="opt-label">Распределение задач, составление плана, короткий отчёт</span><span class="opt-pts">1,0 SP</span></label>
+        <label class="opt"><input type="radio" name="o1" value="2" data-min="80"><span class="opt-label">Аналитика по отделу: сбор данных из нескольких источников + структурирование</span><span class="opt-pts">2,0 SP</span></label>
+        <label class="opt"><input type="radio" name="o1" value="3" data-min="120"><span class="opt-label">Сложный анализ или проектная операционка: сводная, выводы, рекомендации</span><span class="opt-pts">3,0 SP</span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label" id="agree-label">4. Согласования</div>
+    <div class="opts">
+      <label class="opt selected"><input type="radio" name="g2" value="0" data-min="0" data-m="0" checked><span class="opt-label">Нет согласований — редактор работает автономно</span><span class="opt-pts">0 SP</span></label>
+      <label class="opt"><input type="radio" name="g2" value="0.5" data-min="0" data-m="20"><span class="opt-label">Согласование с 1 смежником</span><span class="opt-pts">+0,5 SP</span></label>
+      <label class="opt"><input type="radio" name="g2" value="1.5" data-min="0" data-m="35"><span class="opt-label">Согласование с 2–3 смежниками</span><span class="opt-pts">+1,5 SP</span></label>
+      <label class="opt"><input type="radio" name="g2" value="3" data-min="0" data-m="60"><span class="opt-label">Требуется подключение руководителей отдела + отдельные встречи</span><span class="opt-pts">+3,0 SP</span></label>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="scale-row">
+    <div class="scale-item sc-S" id="sc-S"><span class="scale-size">S</span><span class="scale-range">до 2 SP</span><span class="scale-pts">1 балл</span></div>
+    <div class="scale-item sc-M" id="sc-M"><span class="scale-size">M</span><span class="scale-range">2,01–4 SP</span><span class="scale-pts">2 балла</span></div>
+    <div class="scale-item sc-L" id="sc-L"><span class="scale-size">L</span><span class="scale-range">4,01–6 SP</span><span class="scale-pts">4 балла</span></label></div>
+    <div class="scale-item sc-XL" id="sc-XL"><span class="scale-size">XL</span><span class="scale-range">6,01–8 SP</span><span class="scale-pts">6 баллов</span></div>
+    <div class="scale-item sc-XXL" id="sc-XXL"><span class="scale-size">XXL</span><span class="scale-range">свыше 8 SP</span><span class="scale-pts">8 баллов</span></div>
+  </div>
+
+  <div class="result-row">
+    <div class="metric">
+      <div class="metric-label">Итого SP</div>
+      <div class="metric-value" id="total-sp">0,5</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Уровень задачи</div>
+      <div class="metric-value sz-S" id="size-label">S</div>
+      <div class="metric-sub" id="pts-label">1 балл для ДП</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Ориентир по времени</div>
+      <div class="metric-value" id="time-label">~20 мин</div>
+    </div>
+  </div>
+
+  <div class="breakdown" id="breakdown"></div>
+  <div class="time-note" id="time-note"></div>
+
+  <button class="reset-btn" onclick="resetAll()">Сбросить</button>
+</div>
+
+<script>
+const sizes = [
+  { key:'S', max:2, cls:'sz-S', pts:'1 балл для ДП' },
+  { key:'M', max:4, cls:'sz-M', pts:'2 балла для ДП' },
+  { key:'L', max:6, cls:'sz-L', pts:'4 балла для ДП' },
+  { key:'XL', max:8, cls:'sz-XL', pts:'6 баллов для ДП' },
+  { key:'XXL', max:999, cls:'sz-XXL', pts:'8 баллов для ДП' },
+];
+function getVal(name) { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? parseFloat(el.value) : 0; }
+function getAttr(name, attr) { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? parseFloat(el.dataset[attr] || 0) : 0; }
+function getType() { const el = document.querySelector('input[name="type"]:checked'); return el ? el.value : 'content'; }
+function fmt(n) { return String(n).replace('.', ','); }
+function fmtTime(mins) { mins = Math.round(mins); if (mins < 60) return '~'+mins+' мин'; const h = Math.floor(mins/60), m = mins%60; return m === 0 ? '~'+h+' ч' : '~'+h+' ч '+m+' мин'; }
+function showBlocks(type) {
+  ['content','news','rewrite','ops'].forEach(t => document.getElementById('block-'+t).classList.toggle('hidden', t !== type));
+  const nums = { content:'4.', rewrite:'3.', news:'2.', ops:'2.' };
+  document.getElementById('agree-label').textContent = (nums[type]||'2.')+' Согласования';
+}
+function calc() {
+  const type = getType(), agree = getVal('g2'), meetMins = getAttr('g2','m');
+  let sp = 0, workMins = 0, parts = [];
+  if (type === 'content') {
+    const v1=getVal('g1'),v3=getVal('g3'),v4=getVal('g4');
+    sp=v1+v3+v4+agree; workMins=getAttr('g1','min')+getAttr('g3','min')+getAttr('g4','min');
+    parts=['Объём: '+fmt(v1)+' SP','Охват: '+fmt(v3)+' SP','Новость: '+fmt(v4)+' SP','Согласования: '+fmt(agree)+' SP'];
+  } else if (type === 'news') {
+    sp=getVal('n1')+agree; workMins=getAttr('n1','min');
+    parts=['Новость: '+fmt(getVal('n1'))+' SP','Согласования: '+fmt(agree)+' SP'];
+  } else if (type === 'rewrite') {
+    const r1=getVal('r1'),r2=getVal('r2');
+    sp=r1+r2+agree; workMins=getAttr('r1','min')+getAttr('r2','min');
+    parts=['Рерайт: '+fmt(r1)+' SP','Новость: '+fmt(r2)+' SP','Согласования: '+fmt(agree)+' SP'];
+  } else if (type === 'ops') {
+    sp=getVal('o1')+agree; workMins=getAttr('o1','min');
+    parts=['Операционка: '+fmt(getVal('o1'))+' SP','Согласования: '+fmt(agree)+' SP'];
+  }
+  sp=Math.round(sp*10)/10;
+  const sz=sizes.find(s=>sp<=s.max);
+  document.getElementById('total-sp').textContent=fmt(sp);
+  const sl=document.getElementById('size-label'); sl.textContent=sz.key; sl.className='metric-value '+sz.cls;
+  document.getElementById('pts-label').textContent=sz.pts;
+  document.getElementById('time-label').textContent=fmtTime(workMins+meetMins);
+  document.getElementById('breakdown').textContent=parts.join(' · ');
+  document.getElementById('time-note').textContent=meetMins>0?'Чистая работа: '+fmtTime(workMins)+' + ~'+meetMins+' мин встречи':'';
+  sizes.forEach(s=>{ document.getElementById('sc-'+s.key).classList.toggle('active', s.key===sz.key); });
+}
+function updateSelected() { document.querySelectorAll('.opt, .type-opt').forEach(opt=>{ const inp=opt.querySelector('input'); if(inp) opt.classList.toggle('selected',inp.checked); }); }
+function resetAll() {
+  const d={type:'content',g1:'0.5',g2:'0',g3:'0',g4:'0',n1:'0.5',r1:'3',r2:'0',o1:'0.5'};
+  document.querySelectorAll('input[type=radio]').forEach(inp=>{ inp.checked=d[inp.name]!==undefined&&inp.value===d[inp.name]; });
+  updateSelected(); showBlocks('content'); calc();
+}
+document.querySelectorAll('.type-opt').forEach(opt=>{ opt.addEventListener('click',()=>{ const inp=opt.querySelector('input'); if(inp){inp.checked=true;updateSelected();showBlocks(inp.value);calc();} }); });
+document.querySelectorAll('.opt').forEach(opt=>{ opt.addEventListener('click',()=>{ const inp=opt.querySelector('input'); if(inp){inp.checked=true;updateSelected();calc();} }); });
+calc();
+</script>
+</body>
+</html>
